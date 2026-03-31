@@ -21,11 +21,22 @@ def add_header(doc, name, phone, email, location, linkedin, github, portfolio):
     contact_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
     contact_para.paragraph_format.space_before = Pt(0)
     contact_para.paragraph_format.space_after = Pt(0)
-    contact_run = contact_para.add_run(f"{phone} | {email} | {location} | ")
+    # Only add links that are real URLs — skip plain-text labels (e.g. "LinkedIn" extracted from PDF)
+    links = []
+    if linkedin and linkedin.startswith('http'):
+        links.append(('LinkedIn', linkedin))
+    if github and github.startswith('http'):
+        links.append(('GitHub', github))
+    if portfolio and portfolio.startswith('http'):
+        links.append(('Portfolio', portfolio))
+
+    contact_text = f"{phone} | {email} | {location}"
+    if links:  # only append separator if there are real URLs to show
+        contact_text += " | "
+    contact_run = contact_para.add_run(contact_text)
     contact_run.font.size = Pt(9)
-    
-    add_hyperlink(contact_para, 'LinkedIn', linkedin)
-    contact_para.add_run(' | ').font.size = Pt(9)
-    add_hyperlink(contact_para, 'GitHub', github)
-    contact_para.add_run(' | ').font.size = Pt(9)
-    add_hyperlink(contact_para, 'Portfolio', portfolio)
+
+    for i, (label, url) in enumerate(links):
+        if i > 0:
+            contact_para.add_run(' | ').font.size = Pt(9)
+        add_hyperlink(contact_para, label, url)

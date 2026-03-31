@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ResumeAI — Tailor Your Resume in Seconds</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    * { font-family: 'Inter', sans-serif; }
+
+    /* ── Gradient backgrounds ── */
+    .hero-bg {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+    }
+    .card-glow {
+      box-shadow: 0 0 0 1px rgba(99,102,241,0.08), 0 4px 24px rgba(99,102,241,0.10);
+    }
+    .card-glow:hover {
+      box-shadow: 0 0 0 2px rgba(99,102,241,0.18), 0 8px 32px rgba(99,102,241,0.18);
+    }
+    .btn-gradient {
+      background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%);
+      transition: opacity 0.2s, transform 0.1s;
+    }
+    .btn-gradient:hover { opacity: 0.92; transform: translateY(-1px); }
+    .btn-gradient:active { transform: translateY(0); }
+
+    /* ── Drop zone ── */
+    #drop-zone {
+      background: linear-gradient(135deg, #f8f7ff 0%, #fdf4ff 100%);
+      border: 2px dashed #c4b5fd;
+      transition: all 0.2s;
+    }
+    #drop-zone.dragover {
+      border-color: #7c3aed;
+      background: linear-gradient(135deg, #ede9fe 0%, #fae8ff 100%);
+      transform: scale(1.01);
+    }
+    #drop-zone:hover {
+      border-color: #8b5cf6;
+      background: linear-gradient(135deg, #ede9fe 0%, #fae8ff 100%);
+    }
+
+    /* ── Step badges ── */
+    .step-done   { background: linear-gradient(135deg, #10b981, #059669); color: white; }
+    .step-active { background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; box-shadow: 0 4px 12px rgba(99,102,241,0.4); }
+    .step-idle   { background: #f3f4f6; color: #9ca3af; }
+
+    /* ── Spinner ── */
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner {
+      display: inline-block;
+      width: 14px; height: 14px;
+      border: 2px solid rgba(99,102,241,0.2);
+      border-top-color: #6366f1;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+
+    /* ── Progress bar ── */
+    @keyframes progress { 0%{width:0%} 30%{width:30%} 60%{width:60%} 85%{width:85%} 100%{width:100%} }
+    .progress-bar { animation: progress 55s linear forwards; }
+    .progress-track {
+      background: linear-gradient(90deg, #6366f1, #8b5cf6, #a855f7);
+      border-radius: 9999px;
+    }
+
+    /* ── ATS ring ── */
+    #ats-ring { transition: stroke-dashoffset 1.4s cubic-bezier(0.4,0,0.2,1), stroke 0.4s; }
+
+    /* ── Chip ── */
+    .chip { transition: transform 0.15s, box-shadow 0.15s; cursor: default; }
+    .chip:hover { transform: translateY(-1px) scale(1.04); }
+    .chip[title] { cursor: pointer; }
+    .chip[title]:hover { background:#fff7ed; border-color:#fb923c; box-shadow:0 2px 8px rgba(249,115,22,0.2); }
+
+    /* ── Floating orbs ── */
+    @keyframes float1 { 0%,100%{transform:translateY(0) scale(1)} 50%{transform:translateY(-18px) scale(1.04)} }
+    @keyframes float2 { 0%,100%{transform:translateY(0) scale(1)} 50%{transform:translateY(14px) scale(0.97)} }
+    .orb1 { animation: float1 6s ease-in-out infinite; }
+    .orb2 { animation: float2 8s ease-in-out infinite; }
+
+    /* ── Textarea ── */
+    textarea { resize: vertical; }
+    textarea:focus { outline: none; box-shadow: 0 0 0 3px rgba(99,102,241,0.18); }
+
+    /* ── Input focus ring ── */
+    input:focus { outline: none; box-shadow: 0 0 0 3px rgba(99,102,241,0.18); }
+
+    /* ── Pulse dot ── */
+    @keyframes pulse-dot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(0.85)} }
+    .pulse-dot { animation: pulse-dot 1.5s ease-in-out infinite; }
+
+    /* ── Score card gradient ── */
+    .score-card-green  { background: linear-gradient(135deg,#f0fdf4,#dcfce7); border-color: #86efac; }
+    .score-card-yellow { background: linear-gradient(135deg,#fffbeb,#fef9c3); border-color: #fde68a; }
+    .score-card-orange { background: linear-gradient(135deg,#fff7ed,#ffedd5); border-color: #fed7aa; }
+    .score-card-red    { background: linear-gradient(135deg,#fef2f2,#fee2e2); border-color: #fca5a5; }
+
+    /* ── Fade in ── */
+    @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+    .fade-up { animation: fadeUp 0.5s ease both; }
+    .fade-up-1 { animation-delay: 0.05s; }
+    .fade-up-2 { animation-delay: 0.12s; }
+    .fade-up-3 { animation-delay: 0.20s; }
+  </style>
+</head>
+<body class="min-h-screen bg-gray-50">
+
+  <!-- ── Hero Header ──────────────────────────────────────── -->
+  <header class="hero-bg relative overflow-hidden">
+    <!-- Decorative orbs -->
+    <div class="orb1 absolute -top-10 -right-10 w-64 h-64 bg-white opacity-5 rounded-full pointer-events-none"></div>
+    <div class="orb2 absolute -bottom-16 -left-8 w-80 h-80 bg-white opacity-5 rounded-full pointer-events-none"></div>
+
+    <div class="max-w-3xl mx-auto px-6 py-10 relative z-10">
+      <div class="flex items-center gap-3 mb-4">
+        <div class="w-10 h-10 bg-white bg-opacity-20 backdrop-blur rounded-xl flex items-center justify-center">
+          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M13 10V3L4 14h7v7l9-11h-7z"/>
+          </svg>
+        </div>
+        <span class="text-white font-bold text-xl tracking-tight">ResumeAI</span>
+        <span class="ml-2 text-xs bg-white bg-opacity-20 text-white px-2 py-0.5 rounded-full font-medium">Beta</span>
+      </div>
+      <h1 class="text-3xl sm:text-4xl font-extrabold text-white leading-tight">
+        Tailor your resume to any job<br/>
+        <span class="text-purple-200">in under 60 seconds.</span>
+      </h1>
+      <p class="mt-3 text-purple-100 text-sm sm:text-base max-w-lg">
+        Paste a job description, upload your resume — our AI rewrites your bullets, summary, and skills to match. Then get your ATS score instantly.
+      </p>
+      <div class="mt-5 flex flex-wrap gap-3">
+        <div class="flex items-center gap-1.5 bg-white bg-opacity-15 rounded-full px-3 py-1.5 text-white text-xs font-medium">
+          <span class="w-2 h-2 bg-green-300 rounded-full pulse-dot"></span> GPT-4o powered
+        </div>
+        <div class="flex items-center gap-1.5 bg-white bg-opacity-15 rounded-full px-3 py-1.5 text-white text-xs font-medium">
+          <span class="w-2 h-2 bg-yellow-300 rounded-full pulse-dot" style="animation-delay:0.5s"></span> ATS score included
+        </div>
+        <div class="flex items-center gap-1.5 bg-white bg-opacity-15 rounded-full px-3 py-1.5 text-white text-xs font-medium">
+          <span class="w-2 h-2 bg-blue-300 rounded-full pulse-dot" style="animation-delay:1s"></span> Word doc output
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-3xl mx-auto px-4 py-10 space-y-6">
+
+    <!-- ── Step indicators ──────────────────────────────── -->
+    <div class="flex items-center gap-2 fade-up">
+      <div class="flex items-center gap-2">
+        <span class="w-8 h-8 rounded-full text-sm font-bold flex items-center justify-center step-active" id="s1-num">1</span>
+        <span class="text-sm font-semibold text-gray-700">Resume</span>
+      </div>
+      <div class="flex-1 h-0.5 bg-gradient-to-r from-violet-200 to-gray-200 mx-1"></div>
+      <div class="flex items-center gap-2">
+        <span class="w-8 h-8 rounded-full text-sm font-bold flex items-center justify-center step-idle" id="s2-num">2</span>
+        <span class="text-sm font-semibold text-gray-400" id="s2-label">Job Description</span>
+      </div>
+      <div class="flex-1 h-0.5 bg-gray-200 mx-1"></div>
+      <div class="flex items-center gap-2">
+        <span class="w-8 h-8 rounded-full text-sm font-bold flex items-center justify-center step-idle" id="s3-num">3</span>
+        <span class="text-sm font-semibold text-gray-400" id="s3-label">Generate</span>
+      </div>
+    </div>
+
+    <form id="resume-form" enctype="multipart/form-data" class="space-y-5">
+
+      <!-- ── Step 1: Upload ──────────────────────────────── -->
+      <div class="bg-white rounded-2xl border border-gray-100 card-glow p-6 space-y-4 fade-up fade-up-1">
+        <div class="flex items-center gap-2">
+          <div class="w-7 h-7 rounded-lg bg-violet-100 flex items-center justify-center">
+            <svg class="w-4 h-4 text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414A1 1 0 0119 9.414V19a2 2 0 01-2 2z"/>
+            </svg>
+          </div>
+          <h2 class="font-bold text-gray-800">Step 1 — Upload Your Resume</h2>
+        </div>
+
+        <div id="drop-zone"
+          class="rounded-xl p-8 text-center cursor-pointer"
+          onclick="document.getElementById('resume-input').click()">
+          <div class="w-14 h-14 mx-auto mb-4 rounded-2xl bg-violet-100 flex items-center justify-center">
+            <svg class="w-7 h-7 text-violet-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+            </svg>
+          </div>
+          <p class="text-sm font-semibold text-gray-700">Click to browse or drag &amp; drop</p>
+          <p class="text-xs text-gray-400 mt-1">PDF, DOCX, or TXT · max 10 MB</p>
+          <input type="file" id="resume-input" name="resume" accept=".pdf,.docx,.doc,.txt"
+            class="hidden" required onchange="onFileSelected(this)" />
+        </div>
+
+        <div id="file-badge" class="hidden items-center gap-3 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-xl px-4 py-3">
+          <div class="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center flex-shrink-0">
+            <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+            </svg>
+          </div>
+          <span id="file-name" class="text-sm text-emerald-700 font-semibold truncate flex-1"></span>
+          <button type="button" onclick="clearFile()"
+            class="text-gray-400 hover:text-red-400 transition-colors ml-auto flex-shrink-0">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Profile links -->
+        <div class="border-t border-gray-100 pt-4 space-y-3">
+          <p class="text-xs font-semibold text-gray-400 uppercase tracking-widest">
+            Profile Links
+            <span class="normal-case font-normal text-gray-300 ml-1">— optional, paste if PDF lost your URLs</span>
+          </p>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label class="block text-xs font-medium text-gray-500 mb-1.5">LinkedIn</label>
+              <input type="url" name="linkedin_url" placeholder="https://linkedin.com/in/you"
+                class="w-full border border-gray-200 bg-gray-50 rounded-lg px-3 py-2 text-sm text-gray-700
+                       focus:border-violet-300 transition-colors" />
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-500 mb-1.5">GitHub</label>
+              <input type="url" name="github_url" placeholder="https://github.com/you"
+                class="w-full border border-gray-200 bg-gray-50 rounded-lg px-3 py-2 text-sm text-gray-700
+                       focus:border-violet-300 transition-colors" />
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-500 mb-1.5">Portfolio</label>
+              <input type="url" name="portfolio_url" placeholder="https://yoursite.com"
+                class="w-full border border-gray-200 bg-gray-50 rounded-lg px-3 py-2 text-sm text-gray-700
+                       focus:border-violet-300 transition-colors" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Step 2: JD ──────────────────────────────────── -->
+      <div class="bg-white rounded-2xl border border-gray-100 card-glow p-6 space-y-3 fade-up fade-up-2">
+        <div class="flex items-center gap-2">
+          <div class="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center">
+            <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+            </svg>
+          </div>
+          <h2 class="font-bold text-gray-800">Step 2 — Paste Job Description</h2>
+        </div>
+        <textarea name="jd" id="jd-input" rows="9" required
+          placeholder="Paste the full job description here — include requirements, responsibilities, and tech stack…"
+          onchange="onJdChange()" oninput="onJdChange()"
+          class="w-full border border-gray-200 bg-gray-50 rounded-xl px-4 py-3 text-sm text-gray-700
+                 placeholder-gray-300 focus:border-violet-300 transition-colors"></textarea>
+        <div class="flex items-center justify-between">
+          <p id="jd-count" class="text-xs text-gray-400"></p>
+          <p class="text-xs text-gray-300">More detail = better tailoring</p>
+        </div>
+      </div>
+
+      <!-- ── Step 3: Title + Generate ───────────────────── -->
+      <div class="bg-white rounded-2xl border border-gray-100 card-glow p-6 space-y-4 fade-up fade-up-3">
+        <div class="flex items-center gap-2">
+          <div class="w-7 h-7 rounded-lg bg-fuchsia-100 flex items-center justify-center">
+            <svg class="w-4 h-4 text-fuchsia-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M13 10V3L4 14h7v7l9-11h-7z"/>
+            </svg>
+          </div>
+          <h2 class="font-bold text-gray-800">Step 3 — Job Title &amp; Generate</h2>
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-gray-500 mb-1.5">
+            Job Title <span class="text-gray-300 font-normal">(used as file name)</span>
+          </label>
+          <input type="text" name="job_title" id="job-title"
+            placeholder="e.g. Senior Frontend Engineer"
+            class="w-full border border-gray-200 bg-gray-50 rounded-xl px-4 py-2.5 text-sm text-gray-700
+                   focus:border-violet-300 transition-colors" />
+        </div>
+
+        <button type="submit" id="submit-btn"
+          class="btn-gradient w-full text-white font-bold py-3.5 px-6 rounded-xl
+                 flex items-center justify-center gap-2 text-sm shadow-lg shadow-violet-200">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M13 10V3L4 14h7v7l9-11h-7z"/>
+          </svg>
+          Generate Tailored Resume
+        </button>
+
+        <p class="text-center text-xs text-gray-400">
+          Takes 30–60 seconds · Word doc (.docx) ready to edit
+        </p>
+      </div>
+
+    </form>
+
+    <!-- ── Loading card ────────────────────────────────── -->
+    <div id="loading-card" class="hidden bg-white rounded-2xl border border-violet-100 card-glow p-8 text-center space-y-6">
+      <div class="relative w-16 h-16 mx-auto">
+        <div class="absolute inset-0 rounded-full bg-gradient-to-tr from-violet-400 to-fuchsia-400 opacity-20 animate-ping"></div>
+        <div class="w-16 h-16 rounded-full bg-gradient-to-tr from-violet-100 to-fuchsia-100 flex items-center justify-center relative">
+          <svg class="w-8 h-8 text-violet-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+          </svg>
+        </div>
+      </div>
+
+      <div>
+        <p class="font-bold text-gray-800 text-xl">Crafting your resume…</p>
+        <p class="text-sm text-gray-400 mt-1">Sit tight — usually 30–60 seconds</p>
+      </div>
+
+      <div class="bg-gray-50 rounded-xl p-4 text-left space-y-3 max-w-xs mx-auto" id="progress-steps">
+        <div class="flex items-center gap-2.5 text-sm text-gray-600" id="ps-parse">
+          <div class="spinner flex-shrink-0"></div>
+          <span>Parsing resume</span>
+        </div>
+        <div class="flex items-center gap-2.5 text-sm text-gray-300" id="ps-summary">
+          <div class="w-3.5 h-3.5 rounded-full bg-gray-200 flex-shrink-0"></div>
+          <span>Writing tailored summary</span>
+        </div>
+        <div class="flex items-center gap-2.5 text-sm text-gray-300" id="ps-bullets">
+          <div class="w-3.5 h-3.5 rounded-full bg-gray-200 flex-shrink-0"></div>
+          <span>Generating experience bullets</span>
+        </div>
+        <div class="flex items-center gap-2.5 text-sm text-gray-300" id="ps-skills">
+          <div class="w-3.5 h-3.5 rounded-full bg-gray-200 flex-shrink-0"></div>
+          <span>Matching skills to JD</span>
+        </div>
+        <div class="flex items-center gap-2.5 text-sm text-gray-300" id="ps-doc">
+          <div class="w-3.5 h-3.5 rounded-full bg-gray-200 flex-shrink-0"></div>
+          <span>Building Word document</span>
+        </div>
+        <div class="flex items-center gap-2.5 text-sm text-gray-300" id="ps-ats">
+          <div class="w-3.5 h-3.5 rounded-full bg-gray-200 flex-shrink-0"></div>
+          <span>Calculating ATS score</span>
+        </div>
+      </div>
+
+      <!-- Progress bar -->
+      <div class="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+        <div id="prog-bar" class="h-2 rounded-full progress-bar progress-track" style="width:0%"></div>
+      </div>
+    </div>
+
+    <!-- ── Error card ──────────────────────────────────── -->
+    <div id="error-card" class="hidden bg-red-50 border border-red-200 rounded-2xl p-6 text-center space-y-3">
+      <div class="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto">
+        <svg class="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+      </div>
+      <p class="font-bold text-red-700">Something went wrong</p>
+      <p id="error-msg" class="text-sm text-red-600"></p>
+      <button onclick="resetForm()"
+        class="mt-2 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold px-5 py-2 rounded-lg transition-colors">
+        Try Again
+      </button>
+    </div>
+
+    <!-- ── Results (injected after success) ──────────── -->
+    <div id="results-card" class="hidden space-y-5">
+
+      <!-- ATS Score -->
+      <div id="ats-score-card" class="rounded-2xl border p-6 fade-up">
+        <div class="flex items-center gap-2 mb-5">
+          <div class="w-7 h-7 rounded-lg bg-amber-100 flex items-center justify-center">
+            <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+            </svg>
+          </div>
+          <h2 class="font-bold text-gray-800">ATS Score</h2>
+        </div>
+
+        <div class="flex items-center gap-8 flex-wrap">
+          <!-- Ring -->
+          <div class="relative flex-shrink-0">
+            <svg width="120" height="120" viewBox="0 0 120 120">
+              <defs>
+                <linearGradient id="ring-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" id="grad-stop1" stop-color="#22c55e"/>
+                  <stop offset="100%" id="grad-stop2" stop-color="#16a34a"/>
+                </linearGradient>
+              </defs>
+              <circle cx="60" cy="60" r="50" fill="none" stroke="#f3f4f6" stroke-width="11"/>
+              <circle id="ats-ring" cx="60" cy="60" r="50" fill="none"
+                stroke="url(#ring-grad)" stroke-width="11"
+                stroke-linecap="round"
+                stroke-dasharray="314"
+                stroke-dashoffset="314"
+                transform="rotate(-90 60 60)"/>
+            </svg>
+            <div class="absolute inset-0 flex flex-col items-center justify-center">
+              <span id="ats-pct" class="text-3xl font-black text-gray-900">0%</span>
+              <span class="text-xs text-gray-400 font-medium">ATS</span>
+            </div>
+          </div>
+
+          <!-- Label + breakdown -->
+          <div class="space-y-2 flex-1 min-w-0">
+            <p id="ats-label" class="text-xl font-black"></p>
+            <p id="ats-sub" class="text-sm text-gray-500 leading-relaxed"></p>
+            <div class="flex gap-5 mt-3">
+              <div class="text-center">
+                <p id="matched-count" class="text-2xl font-black text-emerald-500">0</p>
+                <p class="text-xs text-gray-400 font-medium">Matched</p>
+              </div>
+              <div class="w-px bg-gray-200"></div>
+              <div class="text-center">
+                <p id="missing-count" class="text-2xl font-black text-orange-400">0</p>
+                <p class="text-xs text-gray-400 font-medium">Missing</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Keywords -->
+      <div class="bg-white rounded-2xl border border-gray-100 card-glow p-6 space-y-5 fade-up fade-up-1">
+        <div class="flex items-center gap-2">
+          <div class="w-7 h-7 rounded-lg bg-green-100 flex items-center justify-center">
+            <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>
+            </svg>
+          </div>
+          <h2 class="font-bold text-gray-800">Keyword Breakdown</h2>
+        </div>
+
+        <div id="matched-section">
+          <div class="flex items-center gap-2 mb-3">
+            <span class="w-2 h-2 bg-emerald-400 rounded-full"></span>
+            <p class="text-xs font-bold text-emerald-700 uppercase tracking-widest">Matched</p>
+          </div>
+          <div id="matched-chips" class="flex flex-wrap gap-2"></div>
+        </div>
+
+        <div id="missing-section" class="hidden">
+          <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center gap-2">
+              <span class="w-2 h-2 bg-orange-400 rounded-full"></span>
+              <p class="text-xs font-bold text-orange-600 uppercase tracking-widest">Missing</p>
+            </div>
+            <span class="text-xs text-gray-400 italic">Click a skill to claim it</span>
+          </div>
+          <div id="missing-chips" class="flex flex-wrap gap-2"></div>
+          <p class="text-xs text-gray-400 mt-3 bg-orange-50 rounded-lg px-3 py-2 border border-orange-100">
+            Only claim skills you genuinely have — clicking moves them to Matched and updates your score.
+          </p>
+        </div>
+      </div>
+
+      <!-- Download -->
+      <div class="bg-white rounded-2xl border border-gray-100 card-glow p-6 space-y-4 fade-up fade-up-2">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg shadow-emerald-100">
+            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+            </svg>
+          </div>
+          <div>
+            <p class="font-bold text-gray-800">Your resume is ready!</p>
+            <p id="result-filename" class="text-xs text-gray-400 mt-0.5"></p>
+          </div>
+        </div>
+
+        <a id="download-btn" href="#"
+          class="btn-gradient flex items-center justify-center gap-2 w-full text-white
+                 font-bold py-3.5 px-6 rounded-xl text-sm shadow-lg shadow-violet-200">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+          </svg>
+          Download Word Document (.docx)
+        </a>
+
+        <div class="flex items-center gap-2 bg-blue-50 rounded-xl px-4 py-2.5 border border-blue-100">
+          <svg class="w-4 h-4 text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+          <p class="text-xs text-blue-600">Open in Microsoft Word or Google Docs to make any edits before applying.</p>
+        </div>
+
+        <button onclick="resetForm()"
+          class="w-full border-2 border-gray-200 hover:border-violet-300 hover:bg-violet-50
+                 text-gray-600 font-semibold py-2.5 px-6 rounded-xl transition-colors text-sm">
+          Generate Another Resume
+        </button>
+      </div>
+
+    </div><!-- /results-card -->
+
+    <!-- Footer -->
+    <p class="text-center text-xs text-gray-300 pb-6">Built with GPT-4o &amp; python-docx · Your data is never stored</p>
+
+  </main>
+
+  <script>
+    // ── Drag & drop ──────────────────────────────────────────
+    const dz = document.getElementById('drop-zone');
+    dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('dragover'); });
+    dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
+    dz.addEventListener('drop', e => {
+      e.preventDefault(); dz.classList.remove('dragover');
+      const f = e.dataTransfer.files[0];
+      if (f) { document.getElementById('resume-input').files = e.dataTransfer.files; onFileSelected({ files: e.dataTransfer.files }); }
+    });
+
+    function onFileSelected(input) {
+      const f = input.files[0];
+      if (!f) return;
+      document.getElementById('file-name').textContent = f.name;
+      document.getElementById('file-badge').classList.remove('hidden');
+      document.getElementById('file-badge').classList.add('flex');
+      document.getElementById('drop-zone').classList.add('hidden');
+      setStep(2);
+    }
+
+    function clearFile() {
+      document.getElementById('resume-input').value = '';
+      document.getElementById('file-badge').classList.add('hidden');
+      document.getElementById('file-badge').classList.remove('flex');
+      document.getElementById('drop-zone').classList.remove('hidden');
+      setStep(1);
+    }
+
+    // ── Step indicator ───────────────────────────────────────
+    function setStep(n) {
+      for (let i = 1; i <= 3; i++) {
+        const el  = document.getElementById(`s${i}-num`);
+        const lbl = document.getElementById(`s${i}-label`);
+        el.className = 'w-8 h-8 rounded-full text-sm font-bold flex items-center justify-center ' +
+          (i < n ? 'step-done' : i === n ? 'step-active' : 'step-idle');
+        if (lbl) lbl.className = 'text-sm font-semibold ' + (i <= n ? 'text-gray-700' : 'text-gray-400');
+      }
+    }
+
+    function onJdChange() {
+      const jd = document.getElementById('jd-input').value.trim();
+      const count = jd.split(/\s+/).filter(Boolean).length;
+      document.getElementById('jd-count').textContent = count > 0 ? `${count} words` : '';
+      if (jd.length > 50) setStep(3);
+    }
+
+    // ── Animated progress steps ──────────────────────────────
+    function animateSteps() {
+      const steps = [
+        { id: 'ps-parse',   delay: 0     },
+        { id: 'ps-summary', delay: 5000  },
+        { id: 'ps-bullets', delay: 13000 },
+        { id: 'ps-skills',  delay: 28000 },
+        { id: 'ps-doc',     delay: 40000 },
+        { id: 'ps-ats',     delay: 47000 },
+      ];
+      steps.forEach(({ id, delay }, idx) => {
+        if (idx > 0) {
+          setTimeout(() => activateStep(id), delay);
+          setTimeout(() => doneStep(steps[idx - 1].id), delay);
+        }
+      });
+    }
+
+    function activateStep(id) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.className = 'flex items-center gap-2.5 text-sm text-violet-600 font-medium';
+      el.querySelector('div').outerHTML = `<div class="spinner flex-shrink-0"></div>`;
+    }
+
+    function doneStep(id) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.className = 'flex items-center gap-2.5 text-sm text-emerald-600';
+      const icon = el.querySelector('div');
+      if (icon) icon.outerHTML =
+        `<svg class="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+         </svg>`;
+    }
+
+    // ── ATS state ────────────────────────────────────────────
+    let _matched = [];
+    let _missing = [];
+
+    // ── Score ring updater (called on init + after each claim) ──
+    function updateScoreUI(animate) {
+      const total = _matched.length + _missing.length;
+      const score = total > 0 ? (_matched.length / total) * 100 : 0;
+      const circumference = 314;
+      const offset = circumference - (score / 100) * circumference;
+
+      const ring      = document.getElementById('ats-ring');
+      const pct       = document.getElementById('ats-pct');
+      const label     = document.getElementById('ats-label');
+      const sub       = document.getElementById('ats-sub');
+      const scoreCard = document.getElementById('ats-score-card');
+      const stop1     = document.getElementById('grad-stop1');
+      const stop2     = document.getElementById('grad-stop2');
+
+      let colorClass, labelText, subText, c1, c2, labelColor;
+      if (score >= 80) {
+        colorClass='score-card-green'; labelText='Excellent Match'; c1='#22c55e'; c2='#16a34a'; labelColor='#16a34a';
+        subText = "Your resume aligns strongly with this JD. You're in great shape!";
+      } else if (score >= 60) {
+        colorClass='score-card-yellow'; labelText='Good Match'; c1='#f59e0b'; c2='#d97706'; labelColor='#d97706';
+        subText = 'A few keywords are missing. Consider weaving them in where honest.';
+      } else if (score >= 40) {
+        colorClass='score-card-orange'; labelText='Fair Match'; c1='#f97316'; c2='#ea580c'; labelColor='#ea580c';
+        subText = 'Several key terms are absent. Review the missing list below.';
+      } else {
+        colorClass='score-card-red'; labelText='Low Match'; c1='#ef4444'; c2='#dc2626'; labelColor='#dc2626';
+        subText = 'Many required keywords are missing. The JD may require a very different skill set.';
+      }
+
+      scoreCard.className = `rounded-2xl border p-6 fade-up ${colorClass}`;
+      stop1.setAttribute('stop-color', c1);
+      stop2.setAttribute('stop-color', c2);
+      label.textContent = labelText;
+      label.style.color = labelColor;
+      sub.textContent = subText;
+      document.getElementById('matched-count').textContent = _matched.length;
+      document.getElementById('missing-count').textContent = _missing.length;
+
+      if (animate) {
+        // Smooth count-up from current display
+        const prev = parseInt(pct.textContent) || 0;
+        const diff = score - prev;
+        let step = 0;
+        const steps = 30;
+        const interval = setInterval(() => {
+          step++;
+          pct.textContent = Math.round(prev + (diff * step / steps)) + '%';
+          if (step >= steps) clearInterval(interval);
+        }, 16);
+      } else {
+        pct.textContent = Math.round(score) + '%';
+      }
+      setTimeout(() => { ring.style.strokeDashoffset = offset; }, 50);
+
+      // Hide missing section if nothing left
+      if (_missing.length === 0) {
+        document.getElementById('missing-section').classList.add('hidden');
+      } else {
+        document.getElementById('missing-section').classList.remove('hidden');
+      }
+    }
+
+    // ── Claim a missing skill ─────────────────────────────────
+    function claimSkill(keyword, chipEl) {
+      // Move from missing → matched
+      _missing = _missing.filter(k => k !== keyword);
+      _matched.push(keyword);
+
+      // Remove orange chip with a pop animation
+      chipEl.style.transition = 'transform 0.15s, opacity 0.15s';
+      chipEl.style.transform = 'scale(0.8)';
+      chipEl.style.opacity = '0';
+      setTimeout(() => {
+        chipEl.remove();
+
+        // Add green chip to matched
+        const mc = document.getElementById('matched-chips');
+        const s = document.createElement('span');
+        s.className = 'chip px-3 py-1 bg-white border border-emerald-200 text-emerald-700 text-xs rounded-full font-semibold shadow-sm';
+        s.style.animation = 'fadeUp 0.3s ease both';
+        s.textContent = keyword;
+        mc.appendChild(s);
+
+        updateScoreUI(true);
+      }, 150);
+    }
+
+    // ── ATS ring initial render ───────────────────────────────
+    function renderATS(score, matched, missing) {
+      _matched = [...matched];
+      _missing = [...missing];
+
+      // Initial ring draw (count-up from 0)
+      const circumference = 314;
+      const pct = document.getElementById('ats-pct');
+      let current = 0;
+      const target = score;
+      const counter = setInterval(() => {
+        current = Math.min(current + target / 60, target);
+        pct.textContent = Math.round(current) + '%';
+        if (current >= target) clearInterval(counter);
+      }, 16);
+
+      setTimeout(() => updateScoreUI(false), 50);
+
+      // Matched chips
+      const mc = document.getElementById('matched-chips');
+      matched.forEach(kw => {
+        const s = document.createElement('span');
+        s.className = 'chip px-3 py-1 bg-white border border-emerald-200 text-emerald-700 text-xs rounded-full font-semibold shadow-sm';
+        s.textContent = kw;
+        mc.appendChild(s);
+      });
+
+      // Missing chips — clickable
+      const ms = document.getElementById('missing-chips');
+      if (missing.length > 0) {
+        document.getElementById('missing-section').classList.remove('hidden');
+        missing.forEach(kw => {
+          const s = document.createElement('span');
+          s.className = 'chip px-3 py-1 bg-white border border-orange-200 text-orange-600 text-xs rounded-full font-semibold shadow-sm cursor-pointer select-none';
+          s.title = 'Click to claim this skill';
+          s.innerHTML = `${kw} <span class="ml-1 text-orange-300 font-bold">+</span>`;
+          s.addEventListener('click', () => claimSkill(kw, s));
+          ms.appendChild(s);
+        });
+      }
+    }
+
+    // ── Form submit ──────────────────────────────────────────
+    document.getElementById('resume-form').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const form = e.target;
+
+      form.classList.add('hidden');
+      document.getElementById('loading-card').classList.remove('hidden');
+      document.getElementById('error-card').classList.add('hidden');
+      document.getElementById('results-card').classList.add('hidden');
+      animateSteps();
+
+      try {
+        const res  = await fetch('/generate', { method: 'POST', body: new FormData(form) });
+        const json = await res.json();
+
+        if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
+
+        ['ps-parse','ps-summary','ps-bullets','ps-skills','ps-doc','ps-ats'].forEach(doneStep);
+        document.getElementById('loading-card').classList.add('hidden');
+        showResults(json);
+
+      } catch (err) {
+        document.getElementById('loading-card').classList.add('hidden');
+        document.getElementById('error-msg').textContent = err.message;
+        document.getElementById('error-card').classList.remove('hidden');
+        form.classList.remove('hidden');
+      }
+    });
+
+    function showResults(data) {
+      document.getElementById('download-btn').href = `/download/${data.download_token}`;
+      document.getElementById('result-filename').textContent = data.filename;
+      renderATS(data.ats_score, data.matched || [], data.missing || []);
+      document.getElementById('results-card').classList.remove('hidden');
+      window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+    }
+
+    function resetForm() { location.reload(); }
+  </script>
+</body>
+</html>
